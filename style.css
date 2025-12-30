@@ -97,7 +97,12 @@ header p {
   color: white;
   padding: 12px 14px;
   font-weight: 600;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
 }
+
+#chat-header:active { cursor: grabbing; }
 
 #chat-messages {
   flex: 1;
