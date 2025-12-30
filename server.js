@@ -1,4 +1,4 @@
-// server.js
+ // server.js
 import express from "express";
 
 const app = express();
@@ -16,6 +16,23 @@ function sanitizeAnswer(text) {
     .replace(/[ \t]{2,}/g, " ") // collapse runaway spaces without smashing newlines
     .replace(/\n[ \t]+/g, "\n")
     .trim();
+}
+
+function makeFriendlyAnswer(text) {
+  const cleaned = sanitizeAnswer(text);
+  if (!cleaned) return "";
+
+  // Keep only the first couple of sentences to avoid overly long replies
+  const sentences = cleaned.match(/[^.!?]+[.!?]?/g) || [cleaned];
+  let short = sentences.slice(0, 2).join(" ").trim();
+  if (short.length > 400) {
+    short = short.slice(0, 397).replace(/\s+\S*$/, "").trim() + "...";
+  }
+
+  const alreadyGreets = /^\s*(hi|hello|hey)\b/i.test(short);
+  const greeting = alreadyGreets ? "" : "Hi there! ";
+
+  return `${greeting}${short}`;
 }
 
 function parseSsePayload(sseString) {
@@ -140,9 +157,11 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
+    const friendlyAnswer = makeFriendlyAnswer(result.answer);
+
     // Return the session_id directly from RAGFlow's response
     return res.json({ 
-      answer: result.answer,
+      answer: friendlyAnswer,
       sessionId: result.session_id,  // Send RAGFlow's session_id directly to frontend
       reference: result.reference
     });
