@@ -15,11 +15,11 @@ function sanitizeAnswer(text) {
   if (!text || typeof text !== "string") return "";
   const withoutArtifacts = text.replace(/##\d+\$\$/g, ""); // remove RAGFlow citation markers
   return withoutArtifacts
-    .replace(/[ \t]{2,}/g, " ") // collapse runaway spaces without smashing newlines
+    .replace(/[ \t]{2,}/g, " ") // collapse double spaces without smashing newlines
     .replace(/\n[ \t]+/g, "\n")
     .trim();
 }
-
+//purpose: shorten responses to maximum 2 sentences.
 function makeFriendlyAnswer(text) {
   const cleaned = sanitizeAnswer(text);
   if (!cleaned) return "";
