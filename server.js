@@ -187,7 +187,7 @@ app.post("/api/chat", async (req, res) => {
       stream: false
     };
 
-    // Only add session_id if we have one from previous response
+    // only add session_id if we have one from previous response
     if (sessionId) {
       payload.session_id = sessionId;
     }
