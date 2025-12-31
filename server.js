@@ -8,17 +8,12 @@ app.use(express.static(".")); // for index.html/style.css/chat.js
 const RAGFLOW_URL = "http://172.19.99.179"; 
 const RAGFLOW_API_KEY = "ragflow-c2NmExMTQ2ZTRhYTExZjA4YjY1NmE3Yj";
 const CHAT_ID = "a21d6560e17411f080db6a7b02b527a0";
-
-// Optional live sources to pull fresh context on each query (comma-separated list)
-const LIVE_CONTEXT_URLS = (process.env.LIVE_CONTEXT_URLS || "https://icesco.org/en/")
-  .split(",")
-  .map((u) => u.trim())
-  .filter(Boolean);
+const LIVE_CONTEXT_URL = process.env.LIVE_CONTEXT_URL || "https://icesco.org/en/";
 const LIVE_FETCH_TIMEOUT_MS = Number(process.env.LIVE_FETCH_TIMEOUT_MS || 4000);
 
 function sanitizeAnswer(text) {
   if (!text || typeof text !== "string") return "";
-  const withoutArtifacts = text.replace(/##\d+\$\$/g, ""); // strip RAGFlow citation markers
+  const withoutArtifacts = text.replace(/##\d+\$\$/g, ""); // remove RAGFlow citation markers
   return withoutArtifacts
     .replace(/[ \t]{2,}/g, " ") // collapse runaway spaces without smashing newlines
     .replace(/\n[ \t]+/g, "\n")
@@ -29,14 +24,14 @@ function makeFriendlyAnswer(text) {
   const cleaned = sanitizeAnswer(text);
   if (!cleaned) return "";
 
-  // Keep only the first couple of sentences to avoid overly long replies
+// shorten sentences and limit them to 2 phrases max 
   const sentences = cleaned.match(/[^.!?]+[.!?]?/g) || [cleaned];
   let short = sentences.slice(0, 2).join(" ").trim();
   if (short.length > 400) {
     short = short.slice(0, 397).replace(/\s+\S*$/, "").trim() + "...";
   }
 
-  const alreadyGreets = /^\s*(hi|hello|hey)\b/i.test(short);
+  const alreadyGreets = /^\s*(hi|hello|hey|wassup)\b/i.test(short);
   const greeting = alreadyGreets ? "" : "Hi there! ";
 
   return `${greeting}${short}`;
@@ -160,22 +155,16 @@ function chunkText(text, maxChunkLength = 600, maxChunks = 3) {
 }
 
 async function buildLiveContext() {
-  if (!LIVE_CONTEXT_URLS.length) return null;
+  const url = LIVE_CONTEXT_URL;
+  if (!url) return null;
 
-  const collected = [];
-  for (const url of LIVE_CONTEXT_URLS) {
-    const html = await fetchWithTimeout(url, LIVE_FETCH_TIMEOUT_MS);
-    if (!html) continue;
-    const text = stripHtml(html);
-    if (!text) continue;
-    const chunked = chunkText(text);
-    if (chunked) {
-      collected.push(`Source: ${url}\n${chunked}`);
-    }
-  }
-
-  if (!collected.length) return null;
-  return collected.join("\n\n");
+  const html = await fetchWithTimeout(url, LIVE_FETCH_TIMEOUT_MS);
+  if (!html) return null;
+  const text = stripHtml(html);
+  if (!text) return null;
+  const chunked = chunkText(text);
+  if (!chunked) return null;
+  return `Source: ${url}\n${chunked}`;
 }
 
 app.post("/api/chat", async (req, res) => {
