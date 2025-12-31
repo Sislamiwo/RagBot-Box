@@ -9,6 +9,13 @@ const RAGFLOW_URL = "http://172.19.99.179";
 const RAGFLOW_API_KEY = "ragflow-c2NmExMTQ2ZTRhYTExZjA4YjY1NmE3Yj";
 const CHAT_ID = "a21d6560e17411f080db6a7b02b527a0";
 
+// Optional live sources to pull fresh context on each query (comma-separated list)
+const LIVE_CONTEXT_URLS = (process.env.LIVE_CONTEXT_URLS || "https://icesco.org/en/")
+  .split(",")
+  .map((u) => u.trim())
+  .filter(Boolean);
+const LIVE_FETCH_TIMEOUT_MS = Number(process.env.LIVE_FETCH_TIMEOUT_MS || 4000);
+
 function sanitizeAnswer(text) {
   if (!text || typeof text !== "string") return "";
   const withoutArtifacts = text.replace(/##\d+\$\$/g, ""); // strip RAGFlow citation markers
@@ -100,6 +107,77 @@ function extractAnswer(ragflowResponse) {
   return { answer: "", session_id: null, reference: null };
 }
 
+async function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "RagBot-LiveFetcher/1.0" }
+    });
+    if (!res.ok) {
+      console.warn(`Live fetch failed for ${url}: ${res.status}`);
+      return null;
+    }
+    return await res.text();
+  } catch (err) {
+    console.warn(`Live fetch error for ${url}:`, err);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function stripHtml(html) {
+  if (!html) return "";
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ") // drop scripts
+    .replace(/<style[\s\S]*?<\/style>/gi, " ") // drop styles
+    .replace(/<[^>]+>/g, " ") // strip tags
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function chunkText(text, maxChunkLength = 600, maxChunks = 3) {
+  if (!text) return "";
+  const words = text.split(/\s+/);
+  const chunks = [];
+  let current = "";
+
+  for (const word of words) {
+    if ((current + " " + word).trim().length > maxChunkLength) {
+      if (current) chunks.push(current.trim());
+      current = word;
+    } else {
+      current = (current + " " + word).trim();
+    }
+    if (chunks.length >= maxChunks) break;
+  }
+  if (chunks.length < maxChunks && current) {
+    chunks.push(current.trim());
+  }
+  return chunks.slice(0, maxChunks).join("\n\n");
+}
+
+async function buildLiveContext() {
+  if (!LIVE_CONTEXT_URLS.length) return null;
+
+  const collected = [];
+  for (const url of LIVE_CONTEXT_URLS) {
+    const html = await fetchWithTimeout(url, LIVE_FETCH_TIMEOUT_MS);
+    if (!html) continue;
+    const text = stripHtml(html);
+    if (!text) continue;
+    const chunked = chunkText(text);
+    if (chunked) {
+      collected.push(`Source: ${url}\n${chunked}`);
+    }
+  }
+
+  if (!collected.length) return null;
+  return collected.join("\n\n");
+}
+
 app.post("/api/chat", async (req, res) => {
   try {
     const { message, sessionId } = req.body;
@@ -108,9 +186,15 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Missing 'message' (string)." });
     }
 
+    // Pull live data if configured and prepend it to the user's question
+    const liveContext = await buildLiveContext();
+    const questionWithLiveContext = liveContext
+      ? `${message}\n\nLive context:\n${liveContext}`
+      : message;
+
     // Build payload - DON'T send session_id on first message
     const payload = {
-      question: message,
+      question: questionWithLiveContext,
       stream: false
     };
 
