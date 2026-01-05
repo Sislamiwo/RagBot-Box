@@ -101,9 +101,30 @@ header p {
   cursor: grab;
   user-select: none;
   touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 #chat-header:active { cursor: grabbing; }
+
+#toggle-sidebar-btn {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+#toggle-sidebar-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
 
 #chat-body {
   display: flex;
@@ -119,6 +140,10 @@ header p {
   flex-direction: column;
   padding: 8px;
   box-sizing: border-box;
+}
+
+#chat-sidebar {
+  transition: transform 0.25s ease, width 0.25s ease, opacity 0.2s ease, padding 0.2s ease, margin 0.2s ease, border-color 0.2s ease;
 }
 
 .sidebar-title {
@@ -262,4 +287,18 @@ header p {
   color: #2d3c4e;
   font-size: 14px;
   line-height: 1.5;
+}
+
+#chat-widget.sidebar-hidden #chat-sidebar {
+  transform: translateX(-110%);
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+#chat-widget.sidebar-hidden #chat-panel {
+  width: 100%;
 }

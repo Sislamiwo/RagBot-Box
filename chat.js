@@ -4,6 +4,7 @@ const input = document.getElementById("chat-input");
 const sendBtn = document.getElementById("send-btn");
 const messages = document.getElementById("chat-messages");
 const header = document.getElementById("chat-header");
+const toggleSidebarBtn = document.getElementById("toggle-sidebar-btn");
 const conversationList = document.getElementById("conversation-list");
 const newChatBtn = document.getElementById("new-chat-btn");
 
@@ -13,6 +14,7 @@ let isDragging = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
 let isSending = false;
+let sidebarHidden = false;
 let conversations = loadConversations();
 let currentConversationId = conversations[0]?.id || null;
 
@@ -61,6 +63,21 @@ const stopDrag = () => {
 
 header.addEventListener("mousedown", startDrag);
 header.addEventListener("touchstart", startDrag, { passive: true });
+
+function updateSidebarState(hidden) {
+  sidebarHidden = hidden;
+  widget.classList.toggle("sidebar-hidden", hidden);
+  if (toggleSidebarBtn) {
+    toggleSidebarBtn.textContent = hidden ? "Show history" : "Hide history";
+    toggleSidebarBtn.setAttribute("aria-expanded", (!hidden).toString());
+  }
+}
+
+if (toggleSidebarBtn) {
+  toggleSidebarBtn.addEventListener("click", () => updateSidebarState(!sidebarHidden));
+  toggleSidebarBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+  toggleSidebarBtn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+}
 
 function loadConversations() {
   try {
@@ -326,3 +343,4 @@ if (currentConversationId) {
 } else {
   renderMessages(null);
 }
+updateSidebarState(false);
