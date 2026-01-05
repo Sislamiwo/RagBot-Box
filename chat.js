@@ -7,14 +7,19 @@ const header = document.getElementById("chat-header");
 const toggleSidebarBtn = document.getElementById("toggle-sidebar-btn");
 const conversationList = document.getElementById("conversation-list");
 const newChatBtn = document.getElementById("new-chat-btn");
+const resizeHandle = document.getElementById("resize-handle");
 
 const STORAGE_KEY = "sdgBotConversations";
+const MIN_WIDTH = 320;
+const MIN_HEIGHT = 360;
 
 let isDragging = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
 let isSending = false;
 let sidebarHidden = false;
+let isResizing = false;
+let resizeStart = null;
 let conversations = loadConversations();
 let currentConversationId = conversations[0]?.id || null;
 
@@ -28,6 +33,7 @@ const getClientPosition = (e) => {
 };
 
 const startDrag = (e) => {
+  if (isResizing) return;
   const { x, y } = getClientPosition(e);
   const rect = widget.getBoundingClientRect();
   isDragging = true;
@@ -41,7 +47,7 @@ const startDrag = (e) => {
 };
 
 const onDrag = (e) => {
-  if (!isDragging) return;
+  if (!isDragging || isResizing) return;
   const { x, y } = getClientPosition(e);
   const newLeft = x - dragOffsetX;
   const newTop = y - dragOffsetY;
@@ -77,6 +83,62 @@ if (toggleSidebarBtn) {
   toggleSidebarBtn.addEventListener("click", () => updateSidebarState(!sidebarHidden));
   toggleSidebarBtn.addEventListener("mousedown", (e) => e.stopPropagation());
   toggleSidebarBtn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function startResize(e) {
+  const { x, y } = getClientPosition(e);
+  const rect = widget.getBoundingClientRect();
+  isResizing = true;
+  resizeStart = {
+    x,
+    y,
+    width: rect.width,
+    height: rect.height
+  };
+  widget.style.transition = "none";
+  document.addEventListener("mousemove", onResize);
+  document.addEventListener("touchmove", onResize, { passive: false });
+  document.addEventListener("mouseup", stopResize);
+  document.addEventListener("touchend", stopResize);
+  e.preventDefault();
+}
+
+function onResize(e) {
+  if (!isResizing) return;
+  const { x, y } = getClientPosition(e);
+  const dx = x - resizeStart.x;
+  const dy = y - resizeStart.y;
+
+  const maxWidth = window.innerWidth * 0.95;
+  const maxHeight = window.innerHeight * 0.9;
+
+  const newWidth = clamp(resizeStart.width + dx, MIN_WIDTH, maxWidth);
+  const newHeight = clamp(resizeStart.height + dy, MIN_HEIGHT, maxHeight);
+
+  widget.style.width = `${newWidth}px`;
+  widget.style.height = `${newHeight}px`;
+
+  if (e.cancelable) e.preventDefault();
+}
+
+function stopResize() {
+  if (!isResizing) return;
+  isResizing = false;
+  resizeStart = null;
+  widget.style.transition = "";
+  document.removeEventListener("mousemove", onResize);
+  document.removeEventListener("touchmove", onResize);
+  document.removeEventListener("mouseup", stopResize);
+  document.removeEventListener("touchend", stopResize);
+}
+
+if (resizeHandle) {
+  resizeHandle.addEventListener("mousedown", startResize);
+  resizeHandle.addEventListener("touchstart", startResize, { passive: false });
 }
 
 function loadConversations() {
