@@ -186,7 +186,7 @@ app.post("/api/chat", async (req, res) => {
       question: questionWithLiveContext,
       stream: false
     };
-
+  
     // only add session_id if we have one from previous response
     if (sessionId) {
       payload.session_id = sessionId;
@@ -209,7 +209,6 @@ app.post("/api/chat", async (req, res) => {
     if (!r.ok) {
       return res.status(502).json({ error: "RAGFlow error", details: text });
     }
-
     // Parse the response
     let data;
     try {
@@ -218,7 +217,6 @@ app.post("/api/chat", async (req, res) => {
       // If parsing fails, treat as raw streaming format
       data = text;
     }
-
     const result = extractAnswer(data);
 
     if (!result.answer) {

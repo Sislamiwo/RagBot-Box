@@ -11,7 +11,6 @@ body {
 header {
   padding: 60px 20px 30px;
 }
-
 header h1 {
   margin: 0 0 10px;
   font-size: 32px;
@@ -44,7 +43,6 @@ header p {
   transform: translateY(-4px);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.1);
 }
-
 .card h2 {
   margin: 0 0 10px;
   color: #0b6b4a;
