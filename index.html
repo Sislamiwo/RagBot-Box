@@ -30,8 +30,22 @@
 
   <div id="chat-widget" class="hidden">
     <div id="chat-header">SDG Assistant</div>
-    <div id="chat-messages"></div>
-    <input id="chat-input" placeholder="Ask about an SDG..." />
+    <div id="chat-body">
+      <aside id="chat-sidebar">
+        <div class="sidebar-title">
+          <span>Conversations</span>
+          <button id="new-chat-btn" type="button">New</button>
+        </div>
+        <div id="conversation-list"></div>
+      </aside>
+      <div id="chat-panel">
+        <div id="chat-messages"></div>
+        <div id="chat-input-row">
+          <input id="chat-input" placeholder="Ask about an SDG..." aria-label="Ask about an SDG" />
+          <button id="send-btn" type="button">Send</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="chat.js"></script>

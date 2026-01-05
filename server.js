@@ -15,7 +15,7 @@ function sanitizeAnswer(text) {
   if (!text || typeof text !== "string") return "";
   const withoutArtifacts = text.replace(/##\d+\$\$/g, ""); // remove RAGFlow citation markers
   return withoutArtifacts
-    .replace(/[ \t]{2,}/g, " ") // collapse double spaces without smashing newlines
+    .replace(/[ \t]{2,}/g, " ") // remove any double spaces
     .replace(/\n[ \t]+/g, "\n")
     .trim();
 }
