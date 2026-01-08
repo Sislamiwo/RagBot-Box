@@ -189,8 +189,29 @@ function buildTitleFrom(text) {
   const short = clean.length > 42 ? `${clean.slice(0, 42)}...` : clean;
   return short || "Conversation";
 }
-
 function createConversation(title) {
+  const convo = {
+    id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: buildTitleFrom(title || "New conversation"),
+    sessionId: null,
+    updatedAt: Date.now(),
+    messages: [
+      {
+        role: "bot",
+        text: "Hi there! I'm the SDG Bot. How can I help you today?",
+        timestamp: Date.now()
+      }
+    ]
+  };
+  conversations.unshift(convo);
+  currentConversationId = convo.id;
+  saveConversations();
+  renderConversationList();
+  renderMessages(convo);
+  return convo;
+}
+
+async function createConversationWithGreeting(title) {
   const convo = {
     id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title: buildTitleFrom(title || "New conversation"),
@@ -203,8 +224,40 @@ function createConversation(title) {
   saveConversations();
   renderConversationList();
   renderMessages(convo);
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Hello",
+        sessionId: undefined
+      })
+    });
+
+    const data = await res.json();
+    
+    if (res.ok && data.answer) {
+      if (data.sessionId) {
+        convo.sessionId = data.sessionId;
+      }
+      appendMessage(convo.id, "bot", data.answer);
+    } else {
+      // Fallback to default greeting if API fails
+      appendMessage(convo.id, "bot", "Hi there! I'm the SDG Bot. How can I help you today?");
+    }
+  } catch (err) {
+    console.error("Failed to fetch initial greeting:", err);
+    appendMessage(convo.id, "bot", "Hi there! I'm the SDG Bot. How can I help you today?");
+  }
+
   return convo;
 }
+
+newChatBtn.addEventListener("click", async () => {
+  createConversation("New conversation");
+  input.focus();
+});
 
 function ensureActiveConversation(firstMessage) {
   let convo = getCurrentConversation();
