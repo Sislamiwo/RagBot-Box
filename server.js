@@ -24,18 +24,16 @@ function makeFriendlyAnswer(text) {
   const cleaned = sanitizeAnswer(text);
   if (!cleaned) return "";
 
-// shorten sentences and limit them to 2 phrases max 
   const sentences = cleaned.match(/[^.!?]+[.!?]?/g) || [cleaned];
   let short = sentences.slice(0, 2).join(" ").trim();
+
   if (short.length > 400) {
     short = short.slice(0, 397).replace(/\s+\S*$/, "").trim() + "...";
   }
 
-  const alreadyGreets = /^\s*(hi|hello|hey|wassup)\b/i.test(short);
-  const greeting = alreadyGreets ? "" : "Hi there! ";
-
-  return `${greeting}${short}`;
+  return short; // <-- no greeting prefix
 }
+
 
 function parseSsePayload(sseString) {
   const lines = sseString.split('\n').filter(line => line.trim());

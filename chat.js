@@ -55,7 +55,7 @@ const onDrag = (e) => {
   widget.style.top = `${newTop}px`;
   widget.style.right = "auto";
   widget.style.bottom = "auto";
-  if (e.cancelable) e.preventDefault(); // prevent scroll on touch drag
+  if (e.cancelable) e.preventDefault();
 };
 
 const stopDrag = () => {
@@ -189,7 +189,6 @@ function buildTitleFrom(text) {
   const short = clean.length > 42 ? `${clean.slice(0, 42)}...` : clean;
   return short || "Conversation";
 }
-// Replace your createConversation function with this version:
 
 function createConversation(title, addGreeting = true) {
   const convo = {
@@ -200,7 +199,6 @@ function createConversation(title, addGreeting = true) {
     messages: []
   };
   
-  // Only add greeting if explicitly requested (for new chats)
   if (addGreeting) {
     convo.messages.push({
       role: "bot",
@@ -217,11 +215,10 @@ function createConversation(title, addGreeting = true) {
   return convo;
 }
 
-// Update ensureActiveConversation to NOT add greeting
 function ensureActiveConversation(firstMessage) {
   let convo = getCurrentConversation();
   if (!convo) {
-    convo = createConversation(buildTitleFrom(firstMessage), false); // false = no greeting
+    convo = createConversation(buildTitleFrom(firstMessage), false);
   } else if (convo.messages.length === 0 && firstMessage) {
     convo.title = buildTitleFrom(firstMessage);
   }
@@ -229,12 +226,6 @@ function ensureActiveConversation(firstMessage) {
   renderConversationList();
   return convo;
 }
-
-// Update newChatBtn to explicitly add greeting
-newChatBtn.addEventListener("click", () => {
-  createConversation("New conversation", true); // true = add greeting
-  input.focus();
-});
 
 function formatSnippet(text) {
   if (!text) return "No messages yet";
@@ -383,7 +374,11 @@ async function sendMessage() {
       targetConversation.sessionId = data.sessionId;
     }
 
-    appendMessage(conversationIdForRequest, "bot", data.answer || "I couldn't generate a response.");
+    if (data.answer && data.answer.trim() !== "") {
+      appendMessage(conversationIdForRequest, "bot", data.answer);
+    } else {
+      console.log("Received empty answer from server, skipping message append");
+    }
   } catch (err) {
     console.error("Chat error:", err);
     appendMessage(conversationIdForRequest, "system", "Could not reach the assistant. Please try again.");
@@ -402,7 +397,10 @@ conversationList.addEventListener("click", (e) => {
   input.focus();
 });
 
-
+newChatBtn.addEventListener("click", () => {
+  createConversation("New conversation", true);
+  input.focus();
+});
 
 sendBtn.addEventListener("click", sendMessage);
 
