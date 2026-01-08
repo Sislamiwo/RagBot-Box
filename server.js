@@ -31,7 +31,7 @@ function makeFriendlyAnswer(text) {
     short = short.slice(0, 397).replace(/\s+\S*$/, "").trim() + "...";
   }
 
-  return short; // <-- no greeting prefix
+  return short;
 }
 
 

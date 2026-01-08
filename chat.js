@@ -190,7 +190,7 @@ function buildTitleFrom(text) {
   return short || "Conversation";
 }
 
-function createConversation(title, addGreeting = true) {
+function createConversation(title, addGreeting = false) {
   const convo = {
     id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title: buildTitleFrom(title || "New conversation"),
@@ -198,15 +198,7 @@ function createConversation(title, addGreeting = true) {
     updatedAt: Date.now(),
     messages: []
   };
-  
-  if (addGreeting) {
-    convo.messages.push({
-      role: "bot",
-      text: "Hi there! I'm the SDG Bot. How can I help you today?",
-      timestamp: Date.now()
-    });
-  }
-  
+
   conversations.unshift(convo);
   currentConversationId = convo.id;
   saveConversations();
