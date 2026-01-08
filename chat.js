@@ -255,20 +255,23 @@ function renderConversationList() {
 
 function renderMessages(conv) {
   messages.innerHTML = "";
-  if (!conv || conv.messages.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "message system";
-    const author = document.createElement("div");
-    author.className = "message-author";
-    author.textContent = "SDG Bot";
-    const body = document.createElement("p");
-    body.className = "message-text";
-    body.textContent = "Start a new conversation or pick one from the list.";
-    empty.appendChild(author);
-    empty.appendChild(body);
-    messages.appendChild(empty);
-    return;
-  }
+ if (!conv || conv.messages.length === 0) {
+  const welcome = document.createElement("div");
+  welcome.className = "message bot"; // looks like bot, but not stored
+
+  const author = document.createElement("div");
+  author.className = "message-author";
+  author.textContent = "SDG Bot";
+
+  const body = document.createElement("p");
+  body.className = "message-text";
+  body.textContent = "Hi! Ask me anything about the Sustainable Development Goals.";
+
+  welcome.appendChild(author);
+  welcome.appendChild(body);
+  messages.appendChild(welcome);
+  return;
+}
 
   conv.messages.forEach((msg) => {
     messages.appendChild(renderMessage(msg));
@@ -390,7 +393,7 @@ conversationList.addEventListener("click", (e) => {
 });
 
 newChatBtn.addEventListener("click", () => {
-  createConversation("New conversation", true);
+  createConversation("New conversation", false);
   input.focus();
 });
 
