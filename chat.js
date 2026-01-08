@@ -189,29 +189,9 @@ function buildTitleFrom(text) {
   const short = clean.length > 42 ? `${clean.slice(0, 42)}...` : clean;
   return short || "Conversation";
 }
-function createConversation(title) {
-  const convo = {
-    id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    title: buildTitleFrom(title || "New conversation"),
-    sessionId: null,
-    updatedAt: Date.now(),
-    messages: [
-      {
-        role: "bot",
-        text: "Hi there! I'm the SDG Bot. How can I help you today?",
-        timestamp: Date.now()
-      }
-    ]
-  };
-  conversations.unshift(convo);
-  currentConversationId = convo.id;
-  saveConversations();
-  renderConversationList();
-  renderMessages(convo);
-  return convo;
-}
+// Replace your createConversation function with this version:
 
-async function createConversationWithGreeting(title) {
+function createConversation(title, addGreeting = true) {
   const convo = {
     id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title: buildTitleFrom(title || "New conversation"),
@@ -219,50 +199,29 @@ async function createConversationWithGreeting(title) {
     updatedAt: Date.now(),
     messages: []
   };
+  
+  // Only add greeting if explicitly requested (for new chats)
+  if (addGreeting) {
+    convo.messages.push({
+      role: "bot",
+      text: "Hi there! I'm the SDG Bot. How can I help you today?",
+      timestamp: Date.now()
+    });
+  }
+  
   conversations.unshift(convo);
   currentConversationId = convo.id;
   saveConversations();
   renderConversationList();
   renderMessages(convo);
-
-  try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "Hello",
-        sessionId: undefined
-      })
-    });
-
-    const data = await res.json();
-    
-    if (res.ok && data.answer) {
-      if (data.sessionId) {
-        convo.sessionId = data.sessionId;
-      }
-      appendMessage(convo.id, "bot", data.answer);
-    } else {
-      // Fallback to default greeting if API fails
-      appendMessage(convo.id, "bot", "Hi there! I'm the SDG Bot. How can I help you today?");
-    }
-  } catch (err) {
-    console.error("Failed to fetch initial greeting:", err);
-    appendMessage(convo.id, "bot", "Hi there! I'm the SDG Bot. How can I help you today?");
-  }
-
   return convo;
 }
 
-newChatBtn.addEventListener("click", async () => {
-  createConversation("New conversation");
-  input.focus();
-});
-
+// Update ensureActiveConversation to NOT add greeting
 function ensureActiveConversation(firstMessage) {
   let convo = getCurrentConversation();
   if (!convo) {
-    convo = createConversation(buildTitleFrom(firstMessage));
+    convo = createConversation(buildTitleFrom(firstMessage), false); // false = no greeting
   } else if (convo.messages.length === 0 && firstMessage) {
     convo.title = buildTitleFrom(firstMessage);
   }
@@ -270,6 +229,12 @@ function ensureActiveConversation(firstMessage) {
   renderConversationList();
   return convo;
 }
+
+// Update newChatBtn to explicitly add greeting
+newChatBtn.addEventListener("click", () => {
+  createConversation("New conversation", true); // true = add greeting
+  input.focus();
+});
 
 function formatSnippet(text) {
   if (!text) return "No messages yet";
@@ -437,10 +402,7 @@ conversationList.addEventListener("click", (e) => {
   input.focus();
 });
 
-newChatBtn.addEventListener("click", () => {
-  createConversation("New conversation");
-  input.focus();
-});
+
 
 sendBtn.addEventListener("click", sendMessage);
 
