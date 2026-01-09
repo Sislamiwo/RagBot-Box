@@ -179,12 +179,13 @@ header p {
 }
 
 .convo-item {
-  text-align: left;
-  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   background: white;
-  cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -195,6 +196,22 @@ header p {
 .convo-item.active {
   border-color: #0e9a64;
   box-shadow: 0 0 0 2px rgba(14, 154, 100, 0.12);
+}
+
+.convo-main {
+  flex: 1;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: block;
+}
+
+.convo-main:focus-visible,
+.delete-convo-btn:focus-visible {
+  outline: 2px solid #0e9a64;
+  outline-offset: 2px;
 }
 
 .convo-title {
@@ -208,6 +225,28 @@ header p {
   margin: 0;
   font-size: 12px;
   color: #5b6b7b;
+}
+
+.delete-convo-btn {
+  border: none;
+  background: #f4f6fb;
+  color: #c13515;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.delete-convo-btn:hover {
+  background: #fde7e3;
+  color: #9a2b10;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(193, 53, 21, 0.18);
 }
 
 #chat-panel {

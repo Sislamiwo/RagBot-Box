@@ -106,7 +106,6 @@ function startResize(e) {
   document.addEventListener("touchend", stopResize);
   e.preventDefault();
 }
-
 function onResize(e) {
   if (!isResizing) return;
   const { x, y } = getClientPosition(e);
@@ -231,10 +230,14 @@ function renderConversationList() {
   conversationList.innerHTML = "";
 
   conversations.forEach((conv) => {
-    const item = document.createElement("button");
-    item.type = "button";
+    const item = document.createElement("div");
     item.className = `convo-item${conv.id === currentConversationId ? " active" : ""}`;
     item.dataset.id = conv.id;
+
+    const mainButton = document.createElement("button");
+    mainButton.type = "button";
+    mainButton.className = "convo-main";
+    mainButton.dataset.id = conv.id;
 
     const title = document.createElement("div");
     title.className = "convo-title";
@@ -247,8 +250,19 @@ function renderConversationList() {
       lastMessage?.role === "bot" ? "SDG Bot" : lastMessage?.role === "system" ? "Note" : "You";
     meta.textContent = lastMessage ? `${label}: ${formatSnippet(lastMessage.text)}` : "No messages yet";
 
-    item.appendChild(title);
-    item.appendChild(meta);
+    mainButton.appendChild(title);
+    mainButton.appendChild(meta);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "delete-convo-btn";
+    deleteBtn.dataset.id = conv.id;
+    deleteBtn.title = "Delete conversation";
+    deleteBtn.setAttribute("aria-label", "Delete conversation");
+    deleteBtn.textContent = "✕";
+
+    item.appendChild(mainButton);
+    item.appendChild(deleteBtn);
     conversationList.appendChild(item);
   });
 }
@@ -383,13 +397,26 @@ async function sendMessage() {
 }
 
 conversationList.addEventListener("click", (e) => {
-  const item = e.target.closest(".convo-item");
-  if (!item?.dataset?.id) return;
-  currentConversationId = item.dataset.id;
-  const conv = getCurrentConversation();
-  renderConversationList();
-  renderMessages(conv);
-  input.focus();
+  const deleteBtn = e.target.closest(".delete-convo-btn");
+  if (deleteBtn?.dataset?.id) {
+    e.stopPropagation();
+    const id = deleteBtn.dataset.id;
+    const conv = conversations.find((c) => c.id === id);
+    const title = conv?.title || "this conversation";
+    const confirmed = window.confirm(`Delete "${title}"?`);
+    if (!confirmed) return;
+    deleteConversation(id);
+    return;
+  }
+
+  const mainBtn = e.target.closest(".convo-main");
+  if (mainBtn?.dataset?.id) {
+    currentConversationId = mainBtn.dataset.id;
+    const conv = getCurrentConversation();
+    renderConversationList();
+    renderMessages(conv);
+    input.focus();
+  }
 });
 
 newChatBtn.addEventListener("click", () => {
@@ -414,3 +441,18 @@ if (currentConversationId) {
   renderMessages(null);
 }
 updateSidebarState(false);
+
+function deleteConversation(id) {
+  const index = conversations.findIndex((c) => c.id === id);
+  if (index === -1) return;
+  conversations.splice(index, 1);
+
+  if (currentConversationId === id) {
+    currentConversationId = conversations[0]?.id || null;
+  }
+
+  saveConversations();
+  renderConversationList();
+  const current = getCurrentConversation();
+  renderMessages(current);
+}

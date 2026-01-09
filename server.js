@@ -1,4 +1,4 @@
- // server.js
+// server.js
 import express from "express";
 
 const app = express();
@@ -32,6 +32,26 @@ function makeFriendlyAnswer(text) {
   }
 
   return short;
+}
+
+const OPENING_GREETINGS = [
+  /repeat (your|the)? question/i,
+  /please .*repeat/i,
+  /ask(ing)? .*question again/i,
+  /repeat your question please/i,
+  /\bhi[,! ]*i'?m (your )?assistant/i,
+  /\bhello[,! ]*i'?m (your )?assistant/i,
+  /\bi am (your )?assistant/i,
+  /\bhi[,! ]*how can i help/i,
+  /\bhello[,! ]*how can i help/i,
+  /\bhey[,! ]*how can i help/i
+];
+
+function isOpeningGreeting(answer) {
+  if (!answer) return false;
+  const normalized = answer.trim();
+  if (!normalized || normalized.length > 200) return false;
+  return OPENING_GREETINGS.some((pattern) => pattern.test(normalized));
 }
 
 
@@ -98,6 +118,41 @@ function extractAnswer(ragflowResponse) {
   }
   
   return { answer: "", session_id: null, reference: null };
+}
+
+async function callRagFlow(payload, label = "primary") {
+  console.log(`Sending to RAGFlow (${label}):`, payload);
+
+  const response = await fetch(`${RAGFLOW_URL}/api/v1/chats/${CHAT_ID}/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${RAGFLOW_API_KEY}`
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const responseText = await response.text();
+  console.log(`RAGFlow raw response (${label}):`, responseText);
+
+  if (!response.ok) {
+    const err = new Error("RAGFlow error");
+    err.status = response.status;
+    err.details = responseText;
+    throw err;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(responseText);
+  } catch {
+    parsed = responseText;
+  }
+
+  return {
+    result: extractAnswer(parsed),
+    raw: parsed
+  };
 }
 
 async function fetchWithTimeout(url, timeoutMs) {
@@ -173,6 +228,9 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Missing 'message' (string)." });
     }
 
+    // Check if this is an initialization request
+    const isInitRequest = message.toLowerCase().trim() === "hello" && !sessionId;
+
     // Pull live data if configured and prepend it to the user's question
     const liveContext = await buildLiveContext();
     const questionWithLiveContext = liveContext
@@ -190,54 +248,59 @@ app.post("/api/chat", async (req, res) => {
       payload.session_id = sessionId;
     }
 
-    console.log("Sending to RAGFlow:", payload);
+    const primary = await callRagFlow(payload, "primary");
+    const primaryResult = primary.result;
 
-    const r = await fetch(`${RAGFLOW_URL}/api/v1/chats/${CHAT_ID}/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${RAGFLOW_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const text = await r.text();
-    console.log("RAGFlow raw response:", text);
-
-    if (!r.ok) {
-      return res.status(502).json({ error: "RAGFlow error", details: text });
-    }
-    // Parse the response
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      // If parsing fails, treat as raw streaming format
-      data = text;
-    }
-    const result = extractAnswer(data);
-
-    if (!result.answer) {
-      console.error("No answer extracted from response");
-      console.error("Parsed data:", JSON.stringify(data, null, 2));
+    // If this is an initialization request, just return the session_id
+    if (isInitRequest) {
+      console.log("Initialization request - returning session_id only");
       return res.json({ 
-        answer: "Sorry, I couldn't generate a response. Please try again.", 
-        raw: data 
+        answer: "",
+        sessionId: primaryResult.session_id,
+        reference: primaryResult.reference
       });
     }
 
-    const friendlyAnswer = makeFriendlyAnswer(result.answer);
+    let finalResult = primaryResult;
+    let parsedData = primary.raw;
+
+    if (isOpeningGreeting(primaryResult.answer) && primaryResult.session_id) {
+      const followUpPayload = { ...payload, session_id: primaryResult.session_id };
+      try {
+        const followUp = await callRagFlow(followUpPayload, "follow-up");
+        if (followUp.result?.answer) {
+          finalResult = followUp.result;
+          parsedData = followUp.raw;
+        }
+      } catch (err) {
+        console.warn("Follow-up request after greeting failed:", err);
+      }
+    }
+
+    if (!finalResult.answer) {
+      console.error("No answer extracted from response");
+      console.error("Parsed data:", JSON.stringify(parsedData, null, 2));
+      return res.json({ 
+        answer: "Sorry, I couldn't generate a response. Please try again.", 
+        raw: parsedData 
+      });
+    }
+
+    const friendlyAnswer = makeFriendlyAnswer(finalResult.answer);
 
     // Return the session_id directly from RAGFlow's response
     return res.json({ 
       answer: friendlyAnswer,
-      sessionId: result.session_id,  // Send RAGFlow's session_id directly to frontend
-      reference: result.reference
+      sessionId: finalResult.session_id,  // Send RAGFlow's session_id directly to frontend
+      reference: finalResult.reference
     });
 
   } catch (err) {
     console.error("Error:", err);
-    return res.status(500).json({ error: String(err) });
+    const status = err?.status ? 502 : 500;
+    const details = err?.details || String(err);
+    const error = err?.status ? "RAGFlow error" : "Internal server error";
+    return res.status(status).json({ error, details });
   }
 });
 
