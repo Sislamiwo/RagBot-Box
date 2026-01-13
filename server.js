@@ -242,7 +242,7 @@ app.post("/api/chat", async (req, res) => {
       question: questionWithLiveContext,
       stream: false
     };
-  
+
     // only add session_id if we have one from previous response
     if (sessionId) {
       payload.session_id = sessionId;
@@ -260,10 +260,8 @@ app.post("/api/chat", async (req, res) => {
         reference: primaryResult.reference
       });
     }
-
-    let finalResult = primaryResult;
-    let parsedData = primary.raw;
-
+let finalResult = primaryResult;
+        let parsedData = primary.raw; //i dont understand the difference between this job and another normal stage
     if (isOpeningGreeting(primaryResult.answer) && primaryResult.session_id) {
       const followUpPayload = { ...payload, session_id: primaryResult.session_id };
       try {
