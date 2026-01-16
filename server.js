@@ -1,10 +1,7 @@
-// server.js
 import express from "express";
-
 const app = express();
 app.use(express.json());
 app.use(express.static(".")); // for index.html/style.css/chat.js
-
 const RAGFLOW_URL = "http://172.19.99.179"; 
 const RAGFLOW_API_KEY = "ragflow-c2NmExMTQ2ZTRhYTExZjA4YjY1NmE3Yj";
 const CHAT_ID = "a21d6560e17411f080db6a7b02b527a0";
@@ -13,22 +10,21 @@ const LIVE_FETCH_TIMEOUT_MS = Number(process.env.LIVE_FETCH_TIMEOUT_MS || 4000);
 
 function sanitizeAnswer(text) {
   if (!text || typeof text !== "string") return "";
-  const withoutArtifacts = text.replace(/##\d+\$\$/g, ""); // remove RAGFlow citation markers
+  const withoutArtifacts = text.replace(/##\d+\$\$/g, ""); // remove RAGFlow citation mark like adding #&$ 
   return withoutArtifacts
-    .replace(/[ \t]{2,}/g, " ") // remove any double spaces
-    .replace(/\n[ \t]+/g, "\n")
-    .trim();
+  .replace(/[ \t]{2,}/g, " ") // remove any double spaces
+  .replace(/\n[ \t]+/g, "\n")
+  .trim();
 }
-//purpose: shorten responses to maximum 2 sentences.
+//purpos: shorten responses to max 2 sentences
 function makeFriendlyAnswer(text) {
   const cleaned = sanitizeAnswer(text);
   if (!cleaned) return "";
+const sentences = cleaned.match(/[^.!?]+[.!?]?/g) || [cleaned];
+let short = sentences.slice(0, 2).join(" ").trim();
 
-  const sentences = cleaned.match(/[^.!?]+[.!?]?/g) || [cleaned];
-  let short = sentences.slice(0, 2).join(" ").trim();
-
-  if (short.length > 400) {
-    short = short.slice(0, 397).replace(/\s+\S*$/, "").trim() + "...";
+if (short.length > 400) {
+     short = short.slice(0, 397).replace(/\s+\S*$/, "").trim() + "...";
   }
 
   return short;
@@ -54,7 +50,6 @@ function isOpeningGreeting(answer) {
   return OPENING_GREETINGS.some((pattern) => pattern.test(normalized));
 }
 
-
 function parseSsePayload(sseString) {
   const lines = sseString.split('\n').filter(line => line.trim());
   let latestAnswer = null;
@@ -78,8 +73,8 @@ function parseSsePayload(sseString) {
       }
     } catch (e) {
       console.error("Failed to parse SSE line:", line, e);
-    }
-  }
+    
+  }}
 
   if (latestAnswer) {
     return { answer: latestAnswer, session_id: sessionId, reference };
@@ -94,13 +89,13 @@ function extractAnswer(ragflowResponse) {
     if (parsed) return parsed;
   }
   
-  // Case 2:Response is a string (raw SSE format)
+  // case 2:response is a string in SSE format
   if (typeof ragflowResponse === 'string') {
     const parsed = parseSsePayload(ragflowResponse);
     if (parsed) return parsed;
   }
   
-  // Case 3: Normal JSON response (direct answer)
+  // case 3:normal JSON response
   if (typeof ragflowResponse === 'object') {
     const rawAnswer =
       ragflowResponse?.data?.answer ||
@@ -109,20 +104,16 @@ function extractAnswer(ragflowResponse) {
       ragflowResponse?.content ||
       ragflowResponse?.message ||
       "";
-      
     return {
       answer: rawAnswer ? sanitizeAnswer(rawAnswer) : "",
       session_id: ragflowResponse?.data?.session_id || ragflowResponse?.session_id,
       reference: ragflowResponse?.data?.reference || ragflowResponse?.reference
     };
   }
-  
   return { answer: "", session_id: null, reference: null };
 }
-
 async function callRagFlow(payload, label = "primary") {
   console.log(`Sending to RAGFlow (${label}):`, payload);
-
   const response = await fetch(`${RAGFLOW_URL}/api/v1/chats/${CHAT_ID}/completions`, {
     method: "POST",
     headers: {
@@ -131,30 +122,25 @@ async function callRagFlow(payload, label = "primary") {
     },
     body: JSON.stringify(payload),
   });
-
   const responseText = await response.text();
   console.log(`RAGFlow raw response (${label}):`, responseText);
-
   if (!response.ok) {
     const err = new Error("RAGFlow error");
     err.status = response.status;
     err.details = responseText;
     throw err;
   }
-
   let parsed;
   try {
     parsed = JSON.parse(responseText);
   } catch {
     parsed = responseText;
   }
-
   return {
     result: extractAnswer(parsed),
     raw: parsed
   };
 }
-
 async function fetchWithTimeout(url, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -175,23 +161,20 @@ async function fetchWithTimeout(url, timeoutMs) {
     clearTimeout(timer);
   }
 }
-
 function stripHtml(html) {
   if (!html) return "";
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ") // drop scripts
     .replace(/<style[\s\S]*?<\/style>/gi, " ") // drop styles
-    .replace(/<[^>]+>/g, " ") // strip tags
+    .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
-
 function chunkText(text, maxChunkLength = 600, maxChunks = 3) {
   if (!text) return "";
   const words = text.split(/\s+/);
   const chunks = [];
   let current = "";
-
   for (const word of words) {
     if ((current + " " + word).trim().length > maxChunkLength) {
       if (current) chunks.push(current.trim());
@@ -210,7 +193,6 @@ function chunkText(text, maxChunkLength = 600, maxChunks = 3) {
 async function buildLiveContext() {
   const url = LIVE_CONTEXT_URL;
   if (!url) return null;
-
   const html = await fetchWithTimeout(url, LIVE_FETCH_TIMEOUT_MS);
   if (!html) return null;
   const text = stripHtml(html);
@@ -223,12 +205,9 @@ async function buildLiveContext() {
 app.post("/api/chat", async (req, res) => {
   try {
     const { message, sessionId } = req.body;
-
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Missing 'message' (string)." });
     }
-
-    // Check if this is an initialization request
     const isInitRequest = message.toLowerCase().trim() === "hello" && !sessionId;
 
     // Pull live data if configured and prepend it to the user's question
@@ -236,22 +215,17 @@ app.post("/api/chat", async (req, res) => {
     const questionWithLiveContext = liveContext
       ? `${message}\n\nLive context:\n${liveContext}`
       : message;
-
-    // Build payload - DON'T send session_id on first message
     const payload = {
       question: questionWithLiveContext,
       stream: false
     };
-
-    // only add session_id if we have one from previous response
+    //only add session_id if we have one from previous response
     if (sessionId) {
       payload.session_id = sessionId;
     }
-
     const primary = await callRagFlow(payload, "primary");
     const primaryResult = primary.result;
-
-    // If this is an initialization request, just return the session_id
+    //If this is an initialization request, just return the session_id
     if (isInitRequest) {
       console.log("Initialization request - returning session_id only");
       return res.json({ 
@@ -261,7 +235,7 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 let finalResult = primaryResult;
-        let parsedData = primary.raw; //i dont understand the difference between this job and another normal stage
+        let parsedData = primary.raw; 
     if (isOpeningGreeting(primaryResult.answer) && primaryResult.session_id) {
       const followUpPayload = { ...payload, session_id: primaryResult.session_id };
       try {
@@ -274,7 +248,6 @@ let finalResult = primaryResult;
         console.warn("Follow-up request after greeting failed:", err);
       }
     }
-
     if (!finalResult.answer) {
       console.error("No answer extracted from response");
       console.error("Parsed data:", JSON.stringify(parsedData, null, 2));
@@ -283,13 +256,10 @@ let finalResult = primaryResult;
         raw: parsedData 
       });
     }
-
     const friendlyAnswer = makeFriendlyAnswer(finalResult.answer);
-
-    // Return the session_id directly from RAGFlow's response
     return res.json({ 
       answer: friendlyAnswer,
-      sessionId: finalResult.session_id,  // Send RAGFlow's session_id directly to frontend
+      sessionId: finalResult.session_id,  
       reference: finalResult.reference
     });
 
