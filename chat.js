@@ -8,7 +8,6 @@ const toggleSidebarBtn = document.getElementById("toggle-sidebar-btn");
 const conversationList = document.getElementById("conversation-list");
 const newChatBtn = document.getElementById("new-chat-btn");
 const resizeHandle = document.getElementById("resize-handle");
-
 const STORAGE_KEY = "sdgBotConversations";
 const MIN_WIDTH = 320;
 const MIN_HEIGHT = 360;
@@ -22,16 +21,13 @@ let isResizing = false;
 let resizeStart = null;
 let conversations = loadConversations();
 let currentConversationId = conversations[0]?.id || null;
-
 btn.onclick = () => widget.classList.toggle("hidden");
-
 const getClientPosition = (e) => {
   if (e.touches && e.touches.length) {
     return { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }
   return { x: e.clientX, y: e.clientY };
 };
-
 const startDrag = (e) => {
   if (isResizing) return;
   const { x, y } = getClientPosition(e);
@@ -45,7 +41,6 @@ const startDrag = (e) => {
   document.addEventListener("mouseup", stopDrag);
   document.addEventListener("touchend", stopDrag);
 };
-
 const onDrag = (e) => {
   if (!isDragging || isResizing) return;
   const { x, y } = getClientPosition(e);
@@ -57,7 +52,6 @@ const onDrag = (e) => {
   widget.style.bottom = "auto";
   if (e.cancelable) e.preventDefault();
 };
-
 const stopDrag = () => {
   isDragging = false;
   widget.style.transition = "";
@@ -66,10 +60,8 @@ const stopDrag = () => {
   document.removeEventListener("mouseup", stopDrag);
   document.removeEventListener("touchend", stopDrag);
 };
-
 header.addEventListener("mousedown", startDrag);
 header.addEventListener("touchstart", startDrag, { passive: true });
-
 function updateSidebarState(hidden) {
   sidebarHidden = hidden;
   widget.classList.toggle("sidebar-hidden", hidden);
@@ -78,16 +70,15 @@ function updateSidebarState(hidden) {
     toggleSidebarBtn.setAttribute("aria-expanded", (!hidden).toString());
   }
 }
-
 if (toggleSidebarBtn) {
   toggleSidebarBtn.addEventListener("click", () => updateSidebarState(!sidebarHidden));
   toggleSidebarBtn.addEventListener("mousedown", (e) => e.stopPropagation());
   toggleSidebarBtn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
 }
-
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
+
 
 function startResize(e) {
   const { x, y } = getClientPosition(e);
@@ -108,22 +99,18 @@ function startResize(e) {
 }
 function onResize(e) {
   if (!isResizing) return;
-  const { x, y } = getClientPosition(e);
+  const {x, y} = getClientPosition(e);
   const dx = x - resizeStart.x;
   const dy = y - resizeStart.y;
-
   const maxWidth = window.innerWidth * 0.95;
   const maxHeight = window.innerHeight * 0.9;
-
+  //limit to min/max
   const newWidth = clamp(resizeStart.width + dx, MIN_WIDTH, maxWidth);
   const newHeight = clamp(resizeStart.height + dy, MIN_HEIGHT, maxHeight);
-
   widget.style.width = `${newWidth}px`;
   widget.style.height = `${newHeight}px`;
-
   if (e.cancelable) e.preventDefault();
 }
-
 function stopResize() {
   if (!isResizing) return;
   isResizing = false;
@@ -134,12 +121,10 @@ function stopResize() {
   document.removeEventListener("mouseup", stopResize);
   document.removeEventListener("touchend", stopResize);
 }
-
 if (resizeHandle) {
   resizeHandle.addEventListener("mousedown", startResize);
   resizeHandle.addEventListener("touchstart", startResize, { passive: false });
 }
-
 function loadConversations() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -152,7 +137,6 @@ function loadConversations() {
     return [];
   }
 }
-
 function normalizeConversation(conv) {
   const normalizedMessages = Array.isArray(conv?.messages)
     ? conv.messages.map((m) => ({
@@ -160,8 +144,7 @@ function normalizeConversation(conv) {
         text: typeof m?.text === "string" ? m.text : "",
         timestamp: m?.timestamp || Date.now()
       }))
-    : [];
-
+    : []; 
   return {
     id: conv?.id || `conv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     title: conv?.title || "Conversation",
@@ -170,7 +153,6 @@ function normalizeConversation(conv) {
     messages: normalizedMessages
   };
 }
-
 function saveConversations() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
@@ -178,7 +160,6 @@ function saveConversations() {
     console.warn("Could not save conversations:", err);
   }
 }
-
 function getCurrentConversation() {
   return conversations.find((c) => c.id === currentConversationId) || null;
 }
@@ -188,7 +169,6 @@ function buildTitleFrom(text) {
   const short = clean.length > 42 ? `${clean.slice(0, 42)}...` : clean;
   return short || "Conversation";
 }
-
 function createConversation(title, addGreeting = false) {
   const convo = {
     id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -197,7 +177,6 @@ function createConversation(title, addGreeting = false) {
     updatedAt: Date.now(),
     messages: []
   };
-
   conversations.unshift(convo);
   currentConversationId = convo.id;
   saveConversations();
@@ -217,14 +196,12 @@ function ensureActiveConversation(firstMessage) {
   renderConversationList();
   return convo;
 }
-
 function formatSnippet(text) {
   if (!text) return "No messages yet";
   const trimmed = text.trim();
   if (trimmed.length <= 40) return trimmed;
   return `${trimmed.slice(0, 40)}...`;
 }
-
 function renderConversationList() {
   conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   conversationList.innerHTML = "";
@@ -233,12 +210,10 @@ function renderConversationList() {
     const item = document.createElement("div");
     item.className = `convo-item${conv.id === currentConversationId ? " active" : ""}`;
     item.dataset.id = conv.id;
-
-    const mainButton = document.createElement("button");
-    mainButton.type = "button";
-    mainButton.className = "convo-main";
-    mainButton.dataset.id = conv.id;
-
+    const mainbutton = document.createElement("button");
+    mainbutton.type = "button";
+    mainbutton.className = "convo-main";
+    mainbutton.dataset.id = conv.id;
     const title = document.createElement("div");
     title.className = "convo-title";
     title.textContent = conv.title;
@@ -249,9 +224,8 @@ function renderConversationList() {
     const label =
       lastMessage?.role === "bot" ? "SDG Bot" : lastMessage?.role === "system" ? "Note" : "You";
     meta.textContent = lastMessage ? `${label}: ${formatSnippet(lastMessage.text)}` : "No messages yet";
-
-    mainButton.appendChild(title);
-    mainButton.appendChild(meta);
+    mainbutton.appendChild(title);
+    mainbutton.appendChild(meta);
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -261,7 +235,8 @@ function renderConversationList() {
     deleteBtn.setAttribute("aria-label", "Delete conversation");
     deleteBtn.textContent = "✕";
 
-    item.appendChild(mainButton);
+    item.appendChild(mainbutton
+    );
     item.appendChild(deleteBtn);
     conversationList.appendChild(item);
   });

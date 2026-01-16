@@ -12,11 +12,11 @@ function sanitizeAnswer(text) {
   if (!text || typeof text !== "string") return "";
   const withoutArtifacts = text.replace(/##\d+\$\$/g, ""); // remove RAGFlow citation mark like adding #&$ 
   return withoutArtifacts
-  .replace(/[ \t]{2,}/g, " ") // remove any double spaces
+  .replace(/[ \t]{2,}/g, " ") //remove any double spaces
   .replace(/\n[ \t]+/g, "\n")
   .trim();
 }
-//purpos: shorten responses to max 2 sentences
+//make the response shorter
 function makeFriendlyAnswer(text) {
   const cleaned = sanitizeAnswer(text);
   if (!cleaned) return "";
@@ -34,15 +34,15 @@ const OPENING_GREETINGS = [
   /repeat (your|the)? question/i,
   /please .*repeat/i,
   /ask(ing)? .*question again/i,
-  /repeat your question please/i,
+  // /repeat your question please/i,  //redundant with first one
   /\bhi[,! ]*i'?m (your )?assistant/i,
   /\bhello[,! ]*i'?m (your )?assistant/i,
   /\bi am (your )?assistant/i,
   /\bhi[,! ]*how can i help/i,
   /\bhello[,! ]*how can i help/i,
   /\bhey[,! ]*how can i help/i
+  //do: add more if ragflow starts using different greetings
 ];
-
 function isOpeningGreeting(answer) {
   if (!answer) return false;
   const normalized = answer.trim();
@@ -75,7 +75,6 @@ function parseSsePayload(sseString) {
       console.error("Failed to parse SSE line:", line, e);
     
   }}
-
   if (latestAnswer) {
     return { answer: latestAnswer, session_id: sessionId, reference };
   }
@@ -224,20 +223,20 @@ app.post("/api/chat", async (req, res) => {
       payload.session_id = sessionId;
     }
     const primary = await callRagFlow(payload, "primary");
-    const primaryResult = primary.result;
+    const result = primary.result;
     //If this is an initialization request, just return the session_id
     if (isInitRequest) {
       console.log("Initialization request - returning session_id only");
       return res.json({ 
         answer: "",
-        sessionId: primaryResult.session_id,
-        reference: primaryResult.reference
+        sessionId: result.session_id,
+        reference: result.reference
       });
     }
-let finalResult = primaryResult;
+let finalResult = result;
         let parsedData = primary.raw; 
-    if (isOpeningGreeting(primaryResult.answer) && primaryResult.session_id) {
-      const followUpPayload = { ...payload, session_id: primaryResult.session_id };
+    if (isOpeningGreeting(result.answer) && result.session_id) {
+      const followUpPayload = { ...payload, session_id: result.session_id };
       try {
         const followUp = await callRagFlow(followUpPayload, "follow-up");
         if (followUp.result?.answer) {
