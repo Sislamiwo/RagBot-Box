@@ -78,15 +78,12 @@ if (toggleSidebarBtn) {
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
-
-
 function startResize(e) {
   const { x, y } = getClientPosition(e);
   const rect = widget.getBoundingClientRect();
   isResizing = true;
   resizeStart = {
-    x,
-    y,
+    x,y,
     width: rect.width,
     height: rect.height
   };
@@ -135,8 +132,8 @@ function loadConversations() {
   } catch (err) {
     console.warn("Could not load conversations:", err);
     return [];
-  }
-}
+  
+}}
 function normalizeConversation(conv) {
   const normalizedMessages = Array.isArray(conv?.messages)
     ? conv.messages.map((m) => ({
@@ -163,7 +160,6 @@ function saveConversations() {
 function getCurrentConversation() {
   return conversations.find((c) => c.id === currentConversationId) || null;
 }
-
 function buildTitleFrom(text) {
   const clean = (text || "Conversation").trim();
   const short = clean.length > 42 ? `${clean.slice(0, 42)}...` : clean;
@@ -184,7 +180,6 @@ function createConversation(title, addGreeting = false) {
   renderMessages(convo);
   return convo;
 }
-
 function ensureActiveConversation(firstMessage) {
   let convo = getCurrentConversation();
   if (!convo) {
@@ -205,19 +200,17 @@ function formatSnippet(text) {
 function renderConversationList() {
   conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   conversationList.innerHTML = "";
-
   conversations.forEach((conv) => {
     const item = document.createElement("div");
     item.className = `convo-item${conv.id === currentConversationId ? " active" : ""}`;
     item.dataset.id = conv.id;
-    const mainbutton = document.createElement("button");
+     const mainbutton = document.createElement("button");
     mainbutton.type = "button";
     mainbutton.className = "convo-main";
     mainbutton.dataset.id = conv.id;
     const title = document.createElement("div");
     title.className = "convo-title";
     title.textContent = conv.title;
-
     const meta = document.createElement("p");
     meta.className = "convo-meta";
     const lastMessage = conv.messages[conv.messages.length - 1];
@@ -226,27 +219,24 @@ function renderConversationList() {
     meta.textContent = lastMessage ? `${label}: ${formatSnippet(lastMessage.text)}` : "No messages yet";
     mainbutton.appendChild(title);
     mainbutton.appendChild(meta);
-
-    const deleteBtn = document.createElement("button");
+  const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
     deleteBtn.className = "delete-convo-btn";
     deleteBtn.dataset.id = conv.id;
     deleteBtn.title = "Delete conversation";
     deleteBtn.setAttribute("aria-label", "Delete conversation");
     deleteBtn.textContent = "✕";
-
     item.appendChild(mainbutton
     );
     item.appendChild(deleteBtn);
     conversationList.appendChild(item);
   });
 }
-
 function renderMessages(conv) {
   messages.innerHTML = "";
  if (!conv || conv.messages.length === 0) {
   const welcome = document.createElement("div");
-  welcome.className = "message bot"; // looks like bot, but not stored
+  welcome.className = "message bot";
 
   const author = document.createElement("div");
   author.className = "message-author";
@@ -261,7 +251,6 @@ function renderMessages(conv) {
   messages.appendChild(welcome);
   return;
 }
-
   conv.messages.forEach((msg) => {
     messages.appendChild(renderMessage(msg));
   });
@@ -286,7 +275,6 @@ function renderMessage(msg) {
   row.appendChild(body);
   return row;
 }
-
 function appendMessage(conversationId, role, text) {
   const conv = conversations.find((c) => c.id === conversationId);
   if (!conv) return;
@@ -302,7 +290,6 @@ function appendMessage(conversationId, role, text) {
   }
   renderConversationList();
 }
-
 async function sendMessage() {
   const text = input.value.trim();
   if (!text || isSending) return;
@@ -323,8 +310,7 @@ async function sendMessage() {
         message: text,
         sessionId: sessionId || undefined
       })
-    });
-
+    }); 
     const responseText = await res.text();
     let data;
     try {
@@ -332,7 +318,6 @@ async function sendMessage() {
     } catch {
       data = null;
     }
-
     console.log("API response:", data || responseText);
 
     if (!res.ok) {
@@ -370,7 +355,6 @@ async function sendMessage() {
     isSending = false;
   }
 }
-
 conversationList.addEventListener("click", (e) => {
   const deleteBtn = e.target.closest(".delete-convo-btn");
   if (deleteBtn?.dataset?.id) {
@@ -383,7 +367,6 @@ conversationList.addEventListener("click", (e) => {
     deleteConversation(id);
     return;
   }
-
   const mainBtn = e.target.closest(".convo-main");
   if (mainBtn?.dataset?.id) {
     currentConversationId = mainBtn.dataset.id;
@@ -393,21 +376,17 @@ conversationList.addEventListener("click", (e) => {
     input.focus();
   }
 });
-
 newChatBtn.addEventListener("click", () => {
   createConversation("New conversation", false);
   input.focus();
 });
-
 sendBtn.addEventListener("click", sendMessage);
-
 input.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
     sendMessage();
   }
 });
-
 // Initial render
 renderConversationList();
 if (currentConversationId) {
@@ -416,16 +395,13 @@ if (currentConversationId) {
   renderMessages(null);
 }
 updateSidebarState(false);
-
 function deleteConversation(id) {
   const index = conversations.findIndex((c) => c.id === id);
   if (index === -1) return;
   conversations.splice(index, 1);
-
   if (currentConversationId === id) {
     currentConversationId = conversations[0]?.id || null;
   }
-
   saveConversations();
   renderConversationList();
   const current = getCurrentConversation();
